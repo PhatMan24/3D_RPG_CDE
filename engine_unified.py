@@ -1,5 +1,5 @@
 """
-UNIFIED RPG 3D ENGINE - Production Ready (FIXED v2)
+UNIFIED RPG 3D ENGINE - Production Ready (FIXED v3)
 Combines all features from engine.py and t3engine.py
 Now includes interactive stat allocation screen with +/- buttons
 
@@ -108,7 +108,7 @@ def get_tile_color(tile_type):
 
 class Game:
     """
-    Unified RPG 3D Engine (FIXED v2)
+    Unified RPG 3D Engine (FIXED v3)
     - Full 3D raycasting with textures and lighting
     - Combat, inventory, and progression systems
     - Interactive stat allocation with +/- buttons
@@ -559,7 +559,7 @@ class Game:
     # ========================================================================
 
     def save_game_state(self):
-        """Save game state to JSON"""
+        """Save game state to JSON (NO player position - always use map spawn)"""
         state = {
             "health": self.health, "max_health": self.max_health,
             "mana": self.mana, "max_mana": self.max_mana,
@@ -567,7 +567,6 @@ class Game:
             "level": self.level, "xp": self.xp, "xp_to_next_level": self.xp_to_next_level,
             "stat_points": self.stat_points, "strength": self.strength,
             "intelligence": self.intelligence, "endurance": self.endurance,
-            "player_x": self.player_x, "player_y": self.player_y, "player_angle": self.player_angle,
             "current_level": self.current_level,
             "inventory": self.inventory.slots,
         }
@@ -578,7 +577,7 @@ class Game:
             print(f"Failed to save game: {e}")
 
     def load_game_state(self):
-        """Load game state from JSON - but NOT player position (that comes from map spawn)"""
+        """Load game state from JSON (player position NOT loaded - always from map spawn)"""
         if os.path.exists("savegame.json"):
             try:
                 with open("savegame.json", "r") as f:
@@ -595,9 +594,7 @@ class Game:
                 self.intelligence = state.get("intelligence", self.intelligence)
                 self.endurance = state.get("endurance", self.endurance)
 
-                # Don't load player position - let map spawn point override it
-                self.player_angle = state.get("player_angle", self.player_angle)
-
+                # NEVER load player position - it always comes from map spawn point
                 self.recalculate_max_stats()
             except Exception as e:
                 print(f"Failed to load game: {e}")
@@ -1225,6 +1222,10 @@ class Game:
                             self.level_complete = False
                             self.current_level += 1
                             self.map = self.get_initial_map_data()
+                            # CRITICAL: Set spawn point for new level!
+                            self.player_x, self.player_y = self.find_player_spawn_point()
+                            self.build_lightmap()
+                            self.build_interactables()
                         elif e.key == pygame.K_ESCAPE:
                             self.save_game_state()
                             return
