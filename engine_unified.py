@@ -784,9 +784,30 @@ class Game:
             final_shade = max(20, min(255, final_shade))
 
             if self.wall_texture:
-                # Fixed texture mapping - use Y coordinate properly
-                tex_x = int((self.player_x + math.cos(angle) * depth) / 2) % self.wall_texture.get_width()
-                tex_y = int((self.player_y + math.sin(angle) * depth) / 2) % self.wall_texture.get_height()
+                # Calculate texture U coordinate based on which wall face we're hitting
+                # This prevents striping by using the perpendicular offset to the wall
+                hit_x = self.player_x + math.cos(angle) * depth
+                hit_y = self.player_y + math.sin(angle) * depth
+                
+                # Determine which grid cell we hit
+                grid_x = int(hit_x / TILE_SIZE)
+                grid_y = int(hit_y / TILE_SIZE)
+                
+                # Get position within the tile
+                local_x = (hit_x % TILE_SIZE)
+                local_y = (hit_y % TILE_SIZE)
+                
+                # Determine which wall face we're looking at
+                # and get the appropriate texture coordinate
+                if abs(math.cos(angle)) > abs(math.sin(angle)):
+                    # More horizontal ray - hitting vertical wall
+                    tex_x = int(local_y) % self.wall_texture.get_width()
+                else:
+                    # More vertical ray - hitting horizontal wall
+                    tex_x = int(local_x) % self.wall_texture.get_width()
+                
+                tex_y = int((self.player_y / 4)) % self.wall_texture.get_height()
+                
                 try:
                     tex_color = self.wall_texture.get_at((tex_x, tex_y))
                     color = tuple(int(c * final_shade / 255) for c in tex_color[:3])
