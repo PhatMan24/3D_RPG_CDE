@@ -495,7 +495,7 @@ class Game:
         for y in range(len(self.map)):
             for x in range(len(self.map[y])):
                 if self.map[y][x] == TileType.PLAYER_SPAWN.value:
-                    # Return the center of the tile
+                    # Return the center of the tile, convert to world coordinates
                     return float(x * TILE_SIZE + TILE_SIZE // 2), float(y * TILE_SIZE + TILE_SIZE // 2)
         
         # Fallback to map center if no spawn point found
@@ -578,7 +578,7 @@ class Game:
             print(f"Failed to save game: {e}")
 
     def load_game_state(self):
-        """Load game state from JSON"""
+        """Load game state from JSON - but NOT player position (that comes from map spawn)"""
         if os.path.exists("savegame.json"):
             try:
                 with open("savegame.json", "r") as f:
@@ -595,8 +595,7 @@ class Game:
                 self.intelligence = state.get("intelligence", self.intelligence)
                 self.endurance = state.get("endurance", self.endurance)
 
-                self.player_x = state.get("player_x", self.player_x)
-                self.player_y = state.get("player_y", self.player_y)
+                # Don't load player position - let map spawn point override it
                 self.player_angle = state.get("player_angle", self.player_angle)
 
                 self.recalculate_max_stats()
@@ -744,9 +743,11 @@ class Game:
                 return depth
 
             tile = self.map[row][col]
+            # Check for blocking tiles (walls, trees, rocks, etc.)
             if tile in [TileType.WALL_BRICK.value, TileType.WALL_STONE.value, TileType.WALL_WOOD.value,
                        TileType.WALL_BRICK_CRACKED.value, TileType.WALL_STONE_CRACKED.value,
-                       TileType.WALL_WOOD_CRACKED.value]:
+                       TileType.WALL_WOOD_CRACKED.value, TileType.TREE.value, TileType.DEAD_TREE.value,
+                       TileType.BUSH.value, TileType.ROCK.value, TileType.FORCE_FIELD.value]:
                 return depth
 
         return MAX_DEPTH
@@ -786,8 +787,9 @@ class Game:
             final_shade = max(20, min(255, final_shade))
 
             if self.wall_texture:
-                tex_x = int((self.player_x + math.cos(angle) * depth) * 10) % self.wall_texture.get_width()
-                tex_y = int(depth * 2) % self.wall_texture.get_height()
+                # Fixed texture mapping - use Y coordinate properly
+                tex_x = int((self.player_x + math.cos(angle) * depth) / 2) % self.wall_texture.get_width()
+                tex_y = int((self.player_y + math.sin(angle) * depth) / 2) % self.wall_texture.get_height()
                 try:
                     tex_color = self.wall_texture.get_at((tex_x, tex_y))
                     color = tuple(int(c * final_shade / 255) for c in tex_color[:3])
@@ -1161,11 +1163,11 @@ class Game:
     def run(self):
         """Main game loop"""
         self.map = self.get_initial_map_data()
-        self.load_game_state()
         
-        # Set player spawn position from map editor
+        # Set player spawn position from map BEFORE loading game state
         self.player_x, self.player_y = self.find_player_spawn_point()
         
+        self.load_game_state()
         self.build_lightmap()
         self.build_interactables()
 
