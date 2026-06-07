@@ -1,5 +1,5 @@
 """
-UNIFIED RPG 3D ENGINE - Production Ready (FIXED v3)
+UNIFIED RPG 3D ENGINE - Production Ready (FIXED v4)
 Combines all features from engine.py and t3engine.py
 Now includes interactive stat allocation screen with +/- buttons
 
@@ -108,7 +108,7 @@ def get_tile_color(tile_type):
 
 class Game:
     """
-    Unified RPG 3D Engine (FIXED v3)
+    Unified RPG 3D Engine (FIXED v4)
     - Full 3D raycasting with textures and lighting
     - Combat, inventory, and progression systems
     - Interactive stat allocation with +/- buttons
@@ -352,32 +352,54 @@ class Game:
         return tex
 
     def load_all_wall_textures(self):
-        """Load or generate all wall textures"""
+        """Load or generate all wall textures - NO STRIPES"""
         textures = {}
         try:
             textures[TileType.WALL_BRICK.value] = pygame.transform.scale(
                 pygame.image.load(WALL_TEXTURE_PATH).convert(), (TILE_SIZE, TILE_SIZE))
         except:
+            # Generate solid brick texture without vertical stripes
             tex = pygame.Surface((TILE_SIZE, TILE_SIZE))
             tex.fill((90, 45, 35))
-            for y in range(0, TILE_SIZE, 16):
-                pygame.draw.line(tex, (50, 25, 20), (0, y), (TILE_SIZE, y), 2)
+            # Add horizontal mortar lines instead of vertical
+            for y in range(0, TILE_SIZE, 12):
+                pygame.draw.line(tex, (50, 25, 20), (0, y), (TILE_SIZE, y), 1)
+            # Add subtle brick pattern variation (no vertical lines)
+            random.seed(42)
+            for brick_y in range(0, TILE_SIZE, 12):
+                for brick_x in range(0, TILE_SIZE, 16):
+                    # Random variation per brick
+                    color_var = random.randint(-10, 10)
+                    brick_color = (max(50, min(120, 90 + color_var)), 
+                                 max(25, min(60, 45 + color_var//2)), 
+                                 max(20, min(50, 35 + color_var//2)))
+                    pygame.draw.rect(tex, brick_color, (brick_x, brick_y, 16, 12))
             textures[TileType.WALL_BRICK.value] = tex
 
-        # Stone wall
+        # Stone wall - no vertical stripes
         stone = pygame.Surface((TILE_SIZE, TILE_SIZE))
         stone.fill((100, 100, 100))
+        # Only horizontal lines
         for y in range(0, TILE_SIZE, 16):
-            pygame.draw.line(stone, (50, 50, 50), (0, y), (TILE_SIZE, y), 2)
-            for x in range(16 if (y // 16) % 2 == 0 else 0, TILE_SIZE, 32):
-                pygame.draw.line(stone, (50, 50, 50), (x, y), (x, y+16), 2)
+            pygame.draw.line(stone, (70, 70, 70), (0, y), (TILE_SIZE, y), 1)
+        # Add random rock-like variation
+        random.seed(42)
+        for _ in range(8):
+            x = random.randint(0, TILE_SIZE-8)
+            y = random.randint(0, TILE_SIZE-8)
+            pygame.draw.rect(stone, (80, 80, 80), (x, y, 8, 8))
         textures[TileType.WALL_STONE.value] = stone
 
-        # Wood wall
+        # Wood wall - horizontal wood grain, no vertical stripes
         wood = pygame.Surface((TILE_SIZE, TILE_SIZE))
         wood.fill((120, 70, 30))
-        for x in range(0, TILE_SIZE, 16):
-            pygame.draw.line(wood, (80, 40, 15), (x, 0), (x, TILE_SIZE), 2)
+        # Horizontal wood grain lines
+        for y in range(0, TILE_SIZE, 2):
+            variation = random.randint(0, 30)
+            color = (max(80, min(140, 120 + variation//3)), 
+                    max(40, min(100, 70 + variation//3)), 
+                    max(15, min(45, 30 + variation//3)))
+            pygame.draw.line(wood, color, (0, y), (TILE_SIZE, y), 1)
         textures[TileType.WALL_WOOD.value] = wood
 
         # Cracked variants
@@ -783,38 +805,8 @@ class Game:
             final_shade = distance_shade * shadow_factor * sun_brightness
             final_shade = max(20, min(255, final_shade))
 
-            if self.wall_texture:
-                # Calculate texture U coordinate based on which wall face we're hitting
-                # This prevents striping by using the perpendicular offset to the wall
-                hit_x = self.player_x + math.cos(angle) * depth
-                hit_y = self.player_y + math.sin(angle) * depth
-                
-                # Determine which grid cell we hit
-                grid_x = int(hit_x / TILE_SIZE)
-                grid_y = int(hit_y / TILE_SIZE)
-                
-                # Get position within the tile
-                local_x = (hit_x % TILE_SIZE)
-                local_y = (hit_y % TILE_SIZE)
-                
-                # Determine which wall face we're looking at
-                # and get the appropriate texture coordinate
-                if abs(math.cos(angle)) > abs(math.sin(angle)):
-                    # More horizontal ray - hitting vertical wall
-                    tex_x = int(local_y) % self.wall_texture.get_width()
-                else:
-                    # More vertical ray - hitting horizontal wall
-                    tex_x = int(local_x) % self.wall_texture.get_width()
-                
-                tex_y = int((self.player_y / 4)) % self.wall_texture.get_height()
-                
-                try:
-                    tex_color = self.wall_texture.get_at((tex_x, tex_y))
-                    color = tuple(int(c * final_shade / 255) for c in tex_color[:3])
-                except:
-                    color = (final_shade, final_shade * 0.7, final_shade * 0.5)
-            else:
-                color = (final_shade, final_shade * 0.7, final_shade * 0.5)
+            # Use solid color instead of striped texture
+            color = (final_shade * 0.8, final_shade * 0.75, final_shade * 0.7)
 
             rect = pygame.Rect(x, (HEIGHT - wall_height) // 2, col_width, wall_height)
             pygame.draw.rect(self.raycasting_surface, color, rect)
