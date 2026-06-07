@@ -206,7 +206,7 @@ class Game:
         self.game_over_timer = 0
 
         # ===== MOVEMENT & INPUT =====
-        # Player starts in CENTER of map
+        # Player spawn position - will be set from map editor spawn point
         self.player_x = float(MAP_SIZE * TILE_SIZE / 2)
         self.player_y = float(MAP_SIZE * TILE_SIZE / 2)
         self.player_angle = 0.0
@@ -489,6 +489,18 @@ class Game:
             for x in range(min(MAP_SIZE, len(raw_map[y]))):
                 new_map[y][x] = raw_map[y][x]
         return new_map
+
+    def find_player_spawn_point(self):
+        """Find the player spawn point from the map (P Spawn tile)"""
+        for y in range(len(self.map)):
+            for x in range(len(self.map[y])):
+                if self.map[y][x] == TileType.PLAYER_SPAWN.value:
+                    # Return the center of the tile
+                    return float(x * TILE_SIZE + TILE_SIZE // 2), float(y * TILE_SIZE + TILE_SIZE // 2)
+        
+        # Fallback to map center if no spawn point found
+        print("No player spawn point found in map! Using map center.")
+        return float(MAP_SIZE * TILE_SIZE / 2), float(MAP_SIZE * TILE_SIZE / 2)
 
     # ========================================================================
     # INTERACTABLES
@@ -1150,6 +1162,10 @@ class Game:
         """Main game loop"""
         self.map = self.get_initial_map_data()
         self.load_game_state()
+        
+        # Set player spawn position from map editor
+        self.player_x, self.player_y = self.find_player_spawn_point()
+        
         self.build_lightmap()
         self.build_interactables()
 
